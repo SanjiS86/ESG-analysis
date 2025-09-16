@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESG vs Sector Comparator</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: rgba(255, 255, 255, 0.06);
+      --card-strong: rgba(255, 255, 255, 0.12);
+      --text: #eef2ff;
+      --muted: #a5b4fc;
+      --accent: #8b5cf6;
+      --good: #34d399;
+      --bad: #f87171; 
+      --neutral: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% 10%, #1b1f3a 0%, var(--bg) 60%),
+                  radial-gradient(900px 500px at 90% 20%, #1a1033 0%, transparent 60%),
+                  linear-gradient(180deg, #0b1020 0%, #0b1020 100%);
+      min-height: 100vh;
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 28px; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .title {
+      font-weight: 800; letter-spacing: 0.2px;
+      font-size: clamp(22px, 3.2vw, 32px);
+    }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+    .card { background: var(--card); border: 1px solid var(--card-strong); border-radius: 18px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .controls { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 10px; align-items: end; }
+    .controls label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+    .controls input[type="text"], .controls select {
+      width: 100%; background: #0f1530; color: var(--text); border: 1px solid #293055; padding: 10px 12px; border-radius: 12px; outline: none;
+    }
+    .controls input::placeholder { color: #6b7280; }
+    .controls .small { display:flex; align-items:center; gap:8px; }
+    .controls .small input[type="checkbox"] { transform: scale(1.1); }
+    .controls button {
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      color: white; border: none; padding: 12px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(123,58,237,.4);
+    }
+    .controls button:hover { filter: brightness(1.02); }
+
+    .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+    @media (min-width: 920px) { .grid { grid-template-columns: 1.1fr 1fr; } }
+
+    .stat-cards { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
+    .stat { background: #0f1530; border:1px solid #273056; border-radius:16px; padding:12px; }
+    .stat .label { font-size: 12px; color: var(--muted); }
+    .stat .value { font-size: 22px; font-weight: 800; margin-top: 6px; }
+
+    .bars { display: grid; gap: 10px; margin-top: 6px; }
+    .bar { background: #0f1530; border:1px solid #273056; border-radius: 12px; padding: 10px; }
+    .bar .row { display:flex; justify-content: space-between; align-items:center; gap:10px; }
+    .bar .name { font-weight: 700; font-size: 13px; letter-spacing: .3px; width: 90px; }
+    .bar .meter { flex:1; height: 10px; background:#101632; border-radius: 100px; overflow: hidden; border: 1px solid #26305a; margin: 0 6px; }
+    .bar .meter .fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4c78ff, #a78bfa); width: 0%; transition: width .8s ease; }
+    .bar .values { min-width: 135px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #c7d2fe; }
+
+    .delta { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border-radius: 999px; border:1px solid #243055; background:#0f1635; }
+    .delta.good { border-color: rgba(52,211,153,.3); background: rgba(52,211,153,.12); color: var(--good); }
+    .delta.bad { border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.12); color: var(--bad); }
+    .delta.neutral { color: var(--neutral); }
+
+    .verdict { background: #0f1530; border:1px solid #29335d; border-radius: 16px; padding: 14px; }
+    .verdict h3 { margin: 0 0 6px 0; }
+    .muted { color: var(--muted); }
+    .list { margin: 10px 0 0 0; padding-left: 18px; }
+
+    .footer-note { color: #94a3b8; font-size: 12px; margin-top: 10px; }
+
+    .badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; padding:6px 8px; border-radius: 999px; border:1px solid #28325a; background:#0f1530; color:#cbd5e1; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+
+    .spinner { width: 18px; height: 18px; border:3px solid #2b345e; border-top-color: #a78bfa; border-radius: 999px; animation: spin 0.9s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    a.link { color: #c4b5fd; text-decoration: none; border-bottom: 1px dashed #c4b5fd44; }
+    a.link:hover { border-bottom-color: #c4b5fd; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="title">ESG vs Sector Comparator</div>
+        <div class="subtitle">Fetches the latest company ESG from Financial Modeling Prep and compares it to sector benchmarks. Enter your API key below.</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <div>
+          <label>FinancialModelingPrep API Key</label>
+          <input id="apiKey" type="text" placeholder="api_key" />
+        </div>
+        <div>
+          <label>Ticker Symbol</label>
+          <input id="symbol" type="text" placeholder="AAPL" value="AAPL" />
+        </div>
+        <div>
+          <label>Sector Override (after load)</label>
+          <select id="sectorOverride" disabled></select>
+        </div>
+        <div style="display:flex; gap:8px; align-items:end;">
+          <div class="small">
+            <input id="demoMode" type="checkbox" />
+            <label for="demoMode">Use sample data</label>
+          </div>
+          <button id="analyzeBtn">Analyze</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card" id="leftCard">
+        <div class="row" style="justify-content: space-between;">
+          <div>
+            <div class="badge" id="companyBadge">Company: —</div>
+            <div class="badge" id="sectorBadge" style="margin-left:6px;">Sector: —</div>
+          </div>
+          <div class="badge" id="asOf">As of: —</div>
+        </div>
+
+        <div class="stat-cards" style="margin-top: 12px;">
+          <div class="stat">
+            <div class="label">Company ESG</div>
+            <div class="value" id="vCompanyESG">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Sector ESG</div>
+            <div class="value" id="vSectorESG">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Delta (pts)</div>
+            <div class="value" id="vDeltaESG">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Delta (%)</div>
+            <div class="value" id="vDeltaPct">—</div>
+          </div>
+        </div>
+
+        <div class="bars" style="margin-top:12px;">
+          <div class="bar" data-key="ESGScore">
+            <div class="row"><span class="name">Overall</span> <span class="values"><span class="c">—</span> vs <span class="s">—</span></span></div>
+            <div class="row" style="align-items:center; gap:8px;">
+              <div class="meter" title="Company">
+                <div class="fill"></div>
+              </div>
+              <div class="delta neutral">—</div>
+            </div>
+          </div>
+          <div class="bar" data-key="environmentalScore">
+            <div class="row"><span class="name">Environmental</span> <span class="values"><span class="c">—</span> vs <span class="s">—</span></span></div>
+            <div class="row" style="align-items:center; gap:8px;">
+              <div class="meter" title="Company">
+                <div class="fill"></div>
+              </div>
+              <div class="delta neutral">—</div>
+            </div>
+          </div>
+          <div class="bar" data-key="socialScore">
+            <div class="row"><span class="name">Social</span> <span class="values"><span class="c">—</span> vs <span class="s">—</span></span></div>
+            <div class="row" style="align-items:center; gap:8px;">
+              <div class="meter" title="Company">
+                <div class="fill"></div>
+              </div>
+              <div class="delta neutral">—</div>
+            </div>
+          </div>
+          <div class="bar" data-key="governanceScore">
+            <div class="row"><span class="name">Governance</span> <span class="values"><span class="c">—</span> vs <span class="s">—</span></span></div>
+            <div class="row" style="align-items:center; gap:8px;">
+              <div class="meter" title="Company">
+                <div class="fill"></div>
+              </div>
+              <div class="delta neutral">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="rightCard">
+        <div class="verdict">
+          <h3 id="verdictTitle">Verdict</h3>
+          <div id="verdictText" class="muted">Run an analysis to see how the company compares to its sector benchmark.</div>
+          <ul class="list" id="drivers"></ul>
+          <div class="footer-note" id="notes"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Data sources: ESG Disclosures, ESG Benchmark, and Company Profile via FinancialModelingPrep. Scores are 0–100 where higher is better. This tool uses the latest available company filing and most recent benchmark for the matched sector.
+    </div>
+  </div>
+
+  <script>
+    
+    const SAMPLE_DISCLOSURES = [
+      {
+        date: "2025-06-28",
+        acceptedDate: "2025-08-01",
+        symbol: "AAPL",
+        cik: "0000320193",
+        companyName: "Apple Inc.",
+        formType: "10-Q",
+        environmentalScore: 63.7,
+        socialScore: 50.12,
+        governanceScore: 62.89,
+        ESGScore: 58.91,
+        url: "https://www.sec.gov/Archives/edgar/data/320193/000032019325000073/0000320193-25-000073-index.htm",
+      },
+      {
+        date: "2025-03-29",
+        acceptedDate: "2025-05-01",
+        symbol: "AAPL",
+        cik: "0000320193",
+        companyName: "Apple Inc.",
+        formType: "8-K",
+        environmentalScore: 71.62,
+        socialScore: 45.16,
+        governanceScore: 60.49,
+        ESGScore: 59.09,
+        url: "https://www.sec.gov/Archives/edgar/data/320193/000032019325000055/0000320193-25-000055-index.htm",
+      },
+      {
+        date: "2024-12-28",
+        acceptedDate: "2025-01-30",
+        symbol: "AAPL",
+        cik: "0000320193",
+        companyName: "Apple Inc.",
+        formType: "8-K",
+        environmentalScore: 52.52,
+        socialScore: 45.18,
+        governanceScore: 60.74,
+        ESGScore: 52.81,
+        url: "https://www.sec.gov/Archives/edgar/data/320193/000032019325000007/0000320193-25-000007-index.htm",
+      },
+    ];
+
+    const SAMPLE_BENCHMARK = [
+      { fiscalYear: 2023, sector: "APPAREL RETAIL", environmentalScore: 61.36, socialScore: 67.44, governanceScore: 68.1, ESGScore: 65.63 },
+      { fiscalYear: 2023, sector: "PROPERTY/CASUALTY INSURANCE", environmentalScore: 55.41, socialScore: 51.5, governanceScore: 57.98, ESGScore: 54.96 },
+      { fiscalYear: 2023, sector: "BANKS—REGIONAL", environmentalScore: 69.0, socialScore: 69.46, governanceScore: 66.91, ESGScore: 68.46 },
+      { fiscalYear: 2023, sector: "BANKS—REGIONAL", environmentalScore: 63.19, socialScore: 67.28, governanceScore: 62.56, ESGScore: 64.34 },
+      { fiscalYear: 2023, sector: "GAMBLING", environmentalScore: 64.33, socialScore: 68.52, governanceScore: 69.8, ESGScore: 67.55 },
+      { fiscalYear: 2023, sector: "REIT—HOTEL & MOTEL", environmentalScore: 58.96, socialScore: 62.84, governanceScore: 64.78, ESGScore: 62.19 },
+    ];
+
+    const SAMPLE_PROFILE = [
+      {
+        symbol: "AAPL",
+        companyName: "Apple Inc.",
+        sector: "Technology",
+        industry: "Consumer Electronics",
+        website: "https://www.apple.com",
+      },
+    ];
+
+    
+    const $ = (sel) => document.querySelector(sel);
+
+    function jaccardSimilarity(a, b) {
+      const sanitize = (s) => s.toUpperCase().replace(/[^A-Z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+      const A = new Set(sanitize(a));
+      const B = new Set(sanitize(b));
+      const inter = new Set([...A].filter((x) => B.has(x)));
+      const union = new Set([...A, ...B]);
+      return inter.size / (union.size || 1);
+    }
+
+    function pickBestBenchmark(bench, profileSector, profileIndustry) {
+      if (!bench?.length) return { best: null, reason: "No benchmark data." };
+      const latestFY = Math.max(...bench.map((b) => b.fiscalYear || 0));
+      const byFY = bench.filter((b) => (b.fiscalYear || 0) === latestFY);
+      const bySector = byFY.filter((b) => b.sector?.toUpperCase() === (profileSector || "").toUpperCase());
+      if (bySector.length) return { best: bySector[0], reason: `Exact sector match: ${profileSector}` };
+
+      const byIndustry = byFY.filter((b) => b.sector?.toUpperCase() === (profileIndustry || "").toUpperCase());
+      if (byIndustry.length) return { best: byIndustry[0], reason: `Exact industry match: ${profileIndustry}` };
+
+      
+      let best = null, bestScore = -1;
+      const candidates = Array.from(new Set(byFY.map((b) => b.sector)));
+      for (const s of candidates) {
+        const score = Math.max(
+          jaccardSimilarity(profileSector || "", s || ""),
+          jaccardSimilarity(profileIndustry || "", s || "")
+        );
+        if (score > bestScore) { bestScore = score; best = byFY.find((b) => b.sector === s); }
+      }
+      return { best, reason: `Fuzzy matched to \"${best?.sector}\" (similarity ${(bestScore*100).toFixed(0)}%)` };
+    }
+
+    function classifyDelta(delta) {
+      if (Math.abs(delta) < 2.5) return { label: "~ in line", cls: "neutral" };
+      if (delta > 0) return { label: "+ better", cls: "good" };
+      return { label: "− worse", cls: "bad" };
+    }
+
+    function format(n) { return Number(n).toFixed(2); }
+
+    function asOfStr(d) { try { return new Date(d).toISOString().slice(0,10); } catch { return String(d || "—"); } }
+
+    function setDeltaPill(el, delta) {
+      const { label, cls } = classifyDelta(delta);
+      el.className = `delta ${cls}`;
+      el.textContent = `${delta >= 0 ? "+" : ""}${format(delta)} pts • ${label}`;
+    }
+
+    function fillBar(el, company, sector) {
+      el.querySelector('.values .c').textContent = format(company);
+      el.querySelector('.values .s').textContent = format(sector);
+      const fill = el.querySelector('.fill');
+      fill.style.width = Math.max(0, Math.min(100, company)) + '%';
+      setDeltaPill(el.querySelector('.delta'), (company - sector));
+    }
+
+    function makeVerdict(deltas) {
+      const overall = deltas.ESGScore;
+      let title, text;
+      if (overall > 5) { title = "Outperforms sector"; text = `Company's overall ESG is ${format(overall)} pts above the sector benchmark.`; }
+      else if (overall < -5) { title = "Lags sector"; text = `Company's overall ESG is ${format(Math.abs(overall))} pts below the sector benchmark.`; }
+      else { title = "In line with sector"; text = `Company's overall ESG is within ±5 pts of the sector benchmark.`; }
+
+      const components = [
+        { k: 'environmentalScore', n: 'Environmental', d: deltas.environmentalScore },
+        { k: 'socialScore', n: 'Social', d: deltas.socialScore },
+        { k: 'governanceScore', n: 'Governance', d: deltas.governanceScore },
+      ];
+      components.sort((a,b)=> Math.abs(b.d) - Math.abs(a.d));
+      const top = components[0];
+
+      return {
+        title,
+        text: `${text} Biggest driver: ${top.n} (${top.d >= 0 ? '+' : ''}${format(top.d)} pts).`,
+        bullets: components.map(c => `${c.n}: ${c.d >= 0 ? '+' : ''}${format(c.d)} pts vs sector.`),
+      };
+    }
+
+    function uniqueSectors(bench) {
+      return Array.from(new Set(bench.map(b => b.sector))).sort();
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.json();
+    }
+
+    async function runAnalysis({ apiKey, symbol, demoMode }) {
+      const loaders = { disclosures: null, benchmark: null, profile: null };
+      if (demoMode) {
+        loaders.disclosures = Promise.resolve(SAMPLE_DISCLOSURES);
+        loaders.benchmark = Promise.resolve(SAMPLE_BENCHMARK);
+        loaders.profile = Promise.resolve(SAMPLE_PROFILE);
+      } else {
+        const base = 'https://financialmodelingprep.com/stable';
+        loaders.disclosures = fetchJSON(`${base}/esg-disclosures?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`);
+        loaders.benchmark   = fetchJSON(`${base}/esg-benchmark?apikey=${encodeURIComponent(apiKey)}`);
+        loaders.profile     = fetchJSON(`${base}/profile?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`);
+      }
+
+      const [disclosures, benchmark, profileArr] = await Promise.all([
+        loaders.disclosures, loaders.benchmark, loaders.profile
+      ]);
+
+      if (!Array.isArray(disclosures) || disclosures.length === 0) throw new Error('No ESG disclosures returned.');
+      if (!Array.isArray(benchmark) || benchmark.length === 0) throw new Error('No ESG benchmark data returned.');
+      if (!Array.isArray(profileArr) || profileArr.length === 0) throw new Error('No company profile returned.');
+
+      
+      const latest = [...disclosures].sort((a,b) => new Date(b.acceptedDate || b.date) - new Date(a.acceptedDate || a.date))[0];
+      const profile = profileArr[0];
+
+      
+      const { best: chosen, reason } = pickBestBenchmark(benchmark, profile.sector, profile.industry);
+      if (!chosen) throw new Error('Could not determine a sector benchmark to compare against.');
+
+     
+      $('#companyBadge').textContent = `Company: ${profile.companyName || latest.symbol || symbol}`;
+      $('#sectorBadge').textContent = `Sector: ${profile.sector || '—'}${profile.industry ? ` • ${profile.industry}` : ''}`;
+      $('#asOf').textContent = `As of: ${asOfStr(latest.acceptedDate || latest.date)}`;
+
+      
+      const sel = $('#sectorOverride');
+      sel.innerHTML = '';
+      for (const s of uniqueSectors(benchmark)) {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s; sel.appendChild(opt);
+      }
+      sel.disabled = false;
+      sel.value = chosen.sector;
+      sel.onchange = () => {
+        const sector = sel.value;
+        const alternative = benchmark.filter(b => b.sector === sector).sort((a,b)=> (b.fiscalYear||0)-(a.fiscalYear||0))[0];
+        render(latest, alternative, profile, `Overridden to "${sector}" (FY ${alternative?.fiscalYear || '—'})`);
+      };
+
+      render(latest, chosen, profile, `${reason} (FY ${chosen.fiscalYear})`);
+    }
+
+    function render(latest, chosenBench, profile, reasonNote) {
+      const pairs = [
+        ['ESGScore', 'Overall'],
+        ['environmentalScore', 'Environmental'],
+        ['socialScore', 'Social'],
+        ['governanceScore', 'Governance'],
+      ];
+
+      const deltas = {};
+      for (const [key] of pairs) deltas[key] = Number(latest[key]) - Number(chosenBench[key]);
+
+      
+      $('#vCompanyESG').textContent = format(latest.ESGScore);
+      $('#vSectorESG').textContent = format(chosenBench.ESGScore);
+      $('#vDeltaESG').textContent = `${deltas.ESGScore >= 0 ? '+' : ''}${format(deltas.ESGScore)}`;
+      const pct = ((latest.ESGScore - chosenBench.ESGScore) / (chosenBench.ESGScore || 1)) * 100;
+      $('#vDeltaPct').textContent = `${pct >= 0 ? '+' : ''}${format(pct)}%`;
+
+      
+      for (const [key] of pairs) {
+        const el = document.querySelector(`.bar[data-key="${key}"]`);
+        fillBar(el, Number(latest[key]), Number(chosenBench[key]));
+      }
+
+      
+      const verdict = makeVerdict(deltas);
+      $('#verdictTitle').textContent = verdict.title;
+      $('#verdictText').textContent = verdict.text;
+      const drivers = $('#drivers');
+      drivers.innerHTML = '';
+      verdict.bullets.forEach(t => { const li = document.createElement('li'); li.textContent = t; drivers.appendChild(li); });
+
+      
+      $('#notes').innerHTML = `Benchmark sector: <b>${chosenBench.sector}</b> • Fiscal Year: <b>${chosenBench.fiscalYear}</b> <br/> Match note: ${reasonNote}.`;
+    }
+
+    
+    $('#analyzeBtn').addEventListener('click', async () => {
+      const btn = $('#analyzeBtn');
+      const apiKey = $('#apiKey').value.trim();
+      const symbol = ($('#symbol').value || 'AAPL').trim().toUpperCase();
+      const demoMode = $('#demoMode').checked || !apiKey;
+
+      btn.disabled = true; const old = btn.textContent; btn.innerHTML = '<span class="spinner"></span>&nbsp;Loading';
+      try {
+        await runAnalysis({ apiKey, symbol, demoMode });
+      } catch (err) {
+        alert('Error: ' + (err?.message || err));
+        console.error(err);
+      } finally {
+        btn.disabled = false; btn.textContent = old;
+      }
+    });
+
+   
+    window.addEventListener('load', () => {
+      $('#demoMode').checked = true;
+      $('#analyzeBtn').click();
+    });
+  </script>
+</body>
+</html>
